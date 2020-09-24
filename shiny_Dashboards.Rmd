@@ -16,7 +16,7 @@ knitr::opts_chunk$set(echo = TRUE)
 #install.packages("shinydashboard")
 ```
 
-#librerias 
+#1 cargar librerias 
 ```{r}
 library(shinydashboard)
 library(shiny)
@@ -24,6 +24,20 @@ library(dplyr)
 library(readr)
 library(tidyr)
 library(tidyverse)
+```
+#2. Importacion de datos 
+```{r}
+por_dia_ruta27.csv<- read_csv("por_dia_ruta27.csv")
+por_dia_ruta27.csv <- as.data.frame(por_dia_ruta27.csv)
+View(por_dia_ruta27.csv)#para que sea un marco de datos 
+```
+
+eliminar NA´s
+```{r}
+ruta27 <- por_dia_ruta27.csv %>%   #pipe
+                  drop_na()        #elimina los NA´S 
+summary(ruta27)
+#View(ruta27)
 ```
 
 
@@ -49,7 +63,7 @@ server <- function(input,output) {}
 
 
 
-#shinyApp(ui, server)
+shinyApp(ui, server)
 ```
 
 

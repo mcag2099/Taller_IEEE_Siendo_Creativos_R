@@ -1,10 +1,14 @@
 ---
-title: "Taller_RMarkdown"
+title: "Taller RMarkdown"
 author: "Cristal Rivera Picado"
 date: "2 de septiembre de 2020"
-output: html_document
----
+output: 
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
 
+---
+Para este taller vamos aprender a como realizar reportes mediante R Markdown
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -12,21 +16,25 @@ Cuando echo = False en el chunk indica que este no imprime el codigo que se escr
 
 ## R Markdown
 #0. Instalacion R Markdown 
+
+Este comando es para instalar paquetes especificos de R, tambien puede hacerse desde la el cuadro de la derecha en Paquetes luego ir a instalar y elegir el paquete que se desea instalar. 
 ```{r}
-#install.packages("rmarkdown")
+#install.packages("rmarkdown")  
 ```
 
 #1. Cargar librerias
 ```{r}
+library(prettydoc)
 library(rmarkdown)
 library(tidyverse)
-library(tidyr)
+library(tidyr)             #Manipulacion de los datos 
 library(readr)
 library(dplyr)
-library(lubridate)
-library(ggplot2)
-library(forecast)
+library(lubridate) #para trabajar fechas
+library(ggplot2) # para los graficos 
+library(forecast)#predicciones
 ```
+
 #2. Importacion de datos 
 ```{r}
 por_dia_ruta27.csv<- read_csv("por_dia_ruta27.csv")
@@ -40,8 +48,8 @@ summary(por_dia_ruta27.csv)
 ```
 eliminar NA´s
 ```{r}
-ruta27 <- por_dia_ruta27.csv %>% 
-                  drop_na()#elimina los NA´S 
+ruta27 <- por_dia_ruta27.csv %>%   #pipe
+                  drop_na()        #elimina los NA´S 
 summary(ruta27)
 #View(ruta27)
 ```
@@ -53,6 +61,12 @@ summary(ruta27)
   d.Graficar la serie de tiempo del flujo de tráfico por año y cada mes.
   
   
+  
+  Un aspecto importante para considerar es que los graficos que se vayan generando se pueden personalizar con los colores que mas se adecuen a lo que se quiere mostrar. Puedes ver los diferentes colores que ofrece ggplot acá: http://sape.inf.usi.ch/quick-reference/ggplot2/colour
+  
+  
+  
+  
 Respuestas al punto 4)
   
   a. Primero debemos de preparar el acomodo de los datos por tipo de vehiculo y cantidad para que se acople al grafico que deseamos. Revisar funcion gather
@@ -61,14 +75,14 @@ Respuestas al punto 4)
 ```{r}
 ruta27_tipo_veh_1 <- ruta27 %>% 
                             gather("Tipo_Vehiculo", "Cantidad",-c(1,2))
-#ruta27_tipo_veh_1
+View(ruta27_tipo_veh_1)
 ```
 Realizamos la suma  total por tipo de vehiculo 
 ```{r}
 ruta27_tipo_veh <- ruta27_tipo_veh_1 %>%
   group_by(Tipo_Vehiculo) %>%
   summarize(Total= sum(Cantidad))
-#View(ruta27_tipo_veh)
+View(ruta27_tipo_veh)
 ```
 Sin anotaciones
 ```{r}
@@ -83,11 +97,11 @@ Con anotaciones
 ```{r}
 ggplot(ruta27_tipo_veh, aes(x=Tipo_Vehiculo, y= Total)) + geom_bar(stat="identity", fill="greenyellow")+
   labs(x="Tipo de Vehículo", y = "Total del Flujo de Tráfico")+
-  annotate("text", x="Liviano", y = 600000000, label = "687 375 222",fontface="bold",size=4.5,color="grey21")+
-  annotate("text", x="C5E", y = 43000000, label = "17 066 552",color="grey21")+
-  annotate("text", x="C4E", y = 30000000, label = "7 456 996",color="grey21")+
-  annotate("text", x="C23E", y = 35500000, label = "12 124 442",color="grey21")+
-  annotate("text", x="Autobuses", y = 35000000, label = "11 061 878",color="grey21")+
+  annotate("text", x="Liviano", y = 600000000, label = "551 893 458",fontface="bold",size=4.5,color="grey21")+
+  annotate("text", x="C5E", y = 43000000, label = "9 545 256",color="grey21")+
+  annotate("text", x="C4E", y = 30000000, label = "5 812 859",color="grey21")+
+  annotate("text", x="C23E", y = 35500000, label = "7 712 442",color="grey21")+
+  annotate("text", x="Autobuses", y = 35000000, label = "8 041 979",color="grey21")+
   
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
 panel.background = element_blank(),axis.line = element_line(colour = "black"))+
@@ -97,6 +111,7 @@ panel.background = element_blank(),axis.line = element_line(colour = "black"))+
   
   b. Distribuciones
   
+  Utilizamos un histograma y funcion de densidad para visualizar la distrubucion. Ademas se utiliza una funcion que se llama facet wrap la cual es la que hace que se me separa diferentes graficos en uno solo. Tambien existe la funcion facet grid. 
 ```{r}
  ggplot(ruta27_tipo_veh_1, aes(x=Cantidad)) + 
  geom_histogram(aes(y=..density..), colour="black", fill="white")+
@@ -115,7 +130,7 @@ CantLiv <- ruta27_tipo_veh_1 %>%
   filter(Tipo_Vehiculo=="Liviano")
 
 CantLiv$PuntoConteo <-  as.factor(CantLiv$PuntoConteo) #convertimos al punto de conteo en factor,esto se realiza para posteriormente ordenarlos con la funcion fct_level
-View(CantLiv)
+#View(CantLiv)
 ```
 
 Se coloca este comando cuando en ocasiones el group_by no funciona 
@@ -127,7 +142,7 @@ Se coloca este comando cuando en ocasiones el group_by no funciona
 pc <- CantLiv %>%
   group_by(PuntoConteo) %>%
   summarize(sumaVehiculos=sum(Cantidad))
-View(pc)
+#View(pc)
 ```
   
 
@@ -160,9 +175,9 @@ panel.background = element_blank(),axis.line = element_line(colour = "black"))+
   annotate("text", x="10540", y =(as.numeric(order[4,2])+10000000), label = as.character(order[4,2]),color="grey21",size=3)
 
 ```
-son 172 152 452 
+
   
-d. Para el punto de conteo 2900 
+d. Para el punto de conteo 2900 Analisis de series de tiempo 
 
 ```{r}
 ruta27_2900 <- ruta27 %>% 
