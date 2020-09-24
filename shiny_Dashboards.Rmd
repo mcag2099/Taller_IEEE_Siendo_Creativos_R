@@ -1,0 +1,306 @@
+---
+title: "Shiny_dashboards"
+author: "Cristal Rivera Picado"
+date: "15 de septiembre de 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Shiny Dashboards 
+
+#instalation
+```{r}
+#install.packages("shinydashboard")
+```
+
+#librerias 
+```{r}
+library(shinydashboard)
+library(shiny)
+library(dplyr)
+library(readr)
+library(tidyr)
+library(tidyverse)
+```
+
+
+#construccion dashboard basico
+
+Un dashboard contiene tres partes importantes: header,sidebar,body.
+
+Se visualiza pormedio de la funcion shinyApp()
+El ui le dice a Shiny donde colocar el objeto y el server como construir el objeto 
+output contiene todo el código necesario para actualizar los objetos R en su aplicación
+```{r}
+
+## ui.R ##
+ 
+ui <- dashboardPage(
+        dashboardHeader(),
+        dashboardSidebar(),
+        dashboardBody()
+)
+
+## app.R ##
+server <- function(input,output) {}
+
+
+
+#shinyApp(ui, server)
+```
+
+
+
+##Agregar contenido a sidebar y body
+
+```{r}
+## ui.R ##
+
+ui <- dashboardPage(
+        #Titulo General 
+        dashboardHeader(title = "Primer Dashboard"),
+        
+        #Sidebar info
+        dashboardSidebar(
+           sidebarMenu(
+            menuItem("Histograma", tabName = "hist", icon = icon("dashboard")),
+              menuItem("Grafico de Barras", tabName = "bar", icon = icon("chart-bar"))
+            )
+         ), 
+        
+        #contenido body 
+        dashboardBody(
+           tabItems(
+            #Primer contenido tab
+             tabItem( tabName = "hist",
+              fluidRow(
+                 box(plotOutput("plot_hist", width = 900))
+                 )
+               ),
+             
+            #Segundo contenido tab
+            tabItem( tabName = "bar",
+                fluidRow(
+                  box(plotOutput("plot_bar", width = 500))
+                  
+                )
+              )
+            )
+          )
+        )
+
+```
+
+
+```{r}
+## app.R ##
+
+server <- function(input, output) {
+  
+  #lectura de csv 
+          ruta27<- as.data.frame(read_csv("por_dia_ruta27.csv")) %>% 
+                        drop_na() %>% 
+                          gather("Tipo_Vehiculo", "Cantidad",-c(1,2))
+          ruta27_tipo_veh <- ruta27 %>%
+               group_by(Tipo_Vehiculo) %>%
+                summarize(Total= mean(Cantidad))
+  #Output 1 
+
+  output$plot_hist <- renderPlot({
+     
+        #grafico
+        ggplot(ruta27, aes(x=Cantidad)) + 
+          geom_histogram(aes(y=..density..), colour="black", fill="white")+
+          geom_density(alpha=.2, fill="#FF6666") +
+            labs(title="Histograma de la cantidad de Vehículo por Tipo",x="Flujo de tráfico", y ="Densidad")+  
+            facet_wrap( ~ Tipo_Vehiculo, ncol=1,scales="free_y") + #se ajusta libremente el eje y 
+            scale_x_continuous(limit = c(0,10000))+  #se puede adecuar el limite para mostrar la   distribucion
+            theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+            panel.background = element_blank())
+    
+  })
+
+
+#Output 2 
+
+  output$plot_bar <- renderPlot({
+       
+          #grafico
+          ggplot(ruta27_tipo_veh, aes(x=Tipo_Vehiculo, y= Total)) + geom_bar(stat="identity", fill="#FF9999")+
+            labs(title = "Promedio de flujo de tráfico vehicular por tipo de vehículo", x="Tipo de Vehículo", y = "Promedio Flujo de Tráfico")+
+            theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+            panel.background = element_blank(),axis.line = element_line(colour = "black"))
+    
+  })
+        
+}
+
+
+
+shinyApp(ui, server)
+
+```
+
+
+
+##Agregar value Box y skin color 
+
+Se añade un valueBox pero en columna 
+```{r}
+## ui.R ##
+
+ui <- dashboardPage(skin = "yellow",
+          
+        #Titulo General 
+        dashboardHeader(title = "Primer Dashboard"),
+        
+        #Sidebar info
+        dashboardSidebar(
+           sidebarMenu(
+            menuItem("Histograma", tabName = "hist", icon = icon("dashboard")),
+              menuItem("Grafico de Barras", tabName = "bar", icon = icon("chart-bar"))
+            )
+         ), 
+        
+        #contenido body 
+        dashboardBody(
+           tabItems(
+            #Primer contenido tab
+             tabItem( tabName = "hist",
+              fluidRow(
+                 box(plotOutput("plot_hist", width = 900))
+                 )
+               ),
+             
+            #Segundo contenido tab
+            tabItem( tabName = "bar",
+                fluidRow( 
+                  column(1,                                                #columns de 1 a 12
+                   box(plotOutput("plot_bar", height = 400,width = 750))),
+                  column(12, 
+                  valueBoxOutput("bus",width = 4),
+                  valueBoxOutput("C23E"),
+                  valueBoxOutput("C4E"),
+                  valueBoxOutput("C5E"),
+                  valueBoxOutput("liviano")
+                  )
+                )
+              )
+            )
+          )
+        )
+```
+
+
+
+
+```{r}
+## app.R ##
+
+server <- function(input, output) {
+
+  #lectura de csv 
+          ruta27<- as.data.frame(read_csv("por_dia_ruta27.csv")) %>% 
+                        drop_na() %>%                                        #este es para el Output 1 
+                          gather("Tipo_Vehiculo", "Cantidad",-c(1,2))
+          ruta27_tipo_veh <- ruta27 %>%
+               group_by(Tipo_Vehiculo) %>%                                   #este es para el Output 2
+                summarize(Total= mean(Cantidad))
+          
+          #para obtener el valor de cantidad por vehiculos, puedes poner un View para revisar lo que se obtiene
+          autobus <- round(as.numeric(ruta27_tipo_veh[1,2]),0)     #este comando busca la posicion del numero 
+          C23E    <- round(as.numeric(ruta27_tipo_veh[2,2]),0)
+          C4E    <- round(as.numeric(ruta27_tipo_veh[3,2]),0) 
+          C5E    <- round(as.numeric(ruta27_tipo_veh[4,2]),0) 
+          liviano    <- round(as.numeric(ruta27_tipo_veh[5,2]),0) 
+          
+  #Output 1 
+
+  output$plot_hist <- renderPlot({
+     
+        #grafico
+        ggplot(ruta27, aes(x=Cantidad)) + 
+          geom_histogram(aes(y=..density..), colour="black", fill="white")+
+          geom_density(alpha=.2, fill="#FF6666") +
+            labs(title="Histograma de la cantidad de Vehículo por Tipo",x="Flujo de tráfico", y ="Densidad")+  
+            facet_wrap( ~ Tipo_Vehiculo, ncol=1,scales="free_y") + #se ajusta libremente el eje y 
+            scale_x_continuous(limit = c(0,10000))+  #se puede adecuar el limite para mostrar la   distribucion
+            theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+            panel.background = element_blank())
+    
+  })
+
+
+#Output 2 
+
+  output$plot_bar <- renderPlot({
+        
+          #grafico
+          ggplot(ruta27_tipo_veh, aes(x=Tipo_Vehiculo, y= Total)) + geom_bar(stat="identity", fill="#FF9999")+
+            labs(title = "Promedio de flujo de tráfico vehicular por tipo de vehículo", x="Tipo de Vehículo", y = "Promedio Flujo de Tráfico")+
+            theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+            panel.background = element_blank(),axis.line = element_line(colour = "black"))
+    
+  })
+
+  
+#Output bus
+  output$bus <- renderValueBox({
+                 valueBox(
+                   value = autobus,"Autobuses", icon = icon("bus"),color = "teal"
+                )
+          
+    
+  })
+  
+  #Output C23E
+  output$C23E <- renderValueBox({
+                 valueBox(
+                   value = C23E,"Camión 2-3 ejes", icon = icon("truck"),color = "teal"
+                )
+          
+    
+  })
+  
+  
+  #Output C4E
+  output$C4E <- renderValueBox({
+                 valueBox(
+                   value = C4E,"Camión 4 ejes", icon = icon("truck-moving"),color = "teal"
+                )
+          
+    
+  })
+  
+  #Output C5E
+  output$C5E <- renderValueBox({
+                 valueBox(
+                   value = C5E,"Camión 4 ejes", icon = icon("truck-moving"),color = "teal"
+                )
+          
+    
+  })
+  
+  #Output Liviano
+  output$liviano <- renderValueBox({
+                 valueBox(
+                   value = liviano,"Liviano", icon = icon("car"),color = "teal"
+                )
+          
+    
+  })
+  
+  
+  
+  
+        
+}
+
+
+
+shinyApp(ui, server)
+
+```

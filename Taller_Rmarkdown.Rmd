@@ -1,0 +1,221 @@
+---
+title: "Taller_RMarkdown"
+author: "Cristal Rivera Picado"
+date: "2 de septiembre de 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Cuando echo = False en el chunk indica que este no imprime el codigo que se escribe para tener un output(por ejemplo un grafico)
+
+## R Markdown
+#0. Instalacion R Markdown 
+```{r}
+#install.packages("rmarkdown")
+```
+
+#1. Cargar librerias
+```{r}
+library(rmarkdown)
+library(tidyverse)
+library(tidyr)
+library(readr)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(forecast)
+```
+#2. Importacion de datos 
+```{r}
+por_dia_ruta27.csv<- read_csv("por_dia_ruta27.csv")
+por_dia_ruta27.csv <- as.data.frame(por_dia_ruta27.csv)
+View(por_dia_ruta27.csv)#para que sea un marco de datos 
+```
+
+#3. Analisis Exploratorio 
+```{r}
+summary(por_dia_ruta27.csv)
+```
+eliminar NA´s
+```{r}
+ruta27 <- por_dia_ruta27.csv %>% 
+                  drop_na()#elimina los NA´S 
+summary(ruta27)
+#View(ruta27)
+```
+
+#4. Graficos exploratorios
+  a. ¿Cuál es el mayor tipo de vehiculo que transita por la ruta 27 a lo largo de los cinco anos?
+  b. ¿Cómo es la distribucion de cada tipo de vehiculo?
+  c. ¿Cual(es) son los puntos de conteo con mayor flujo de tráfico vehicular en     sentido creciente y sentido decreciente?
+  d.Graficar la serie de tiempo del flujo de tráfico por año y cada mes.
+  
+  
+Respuestas al punto 4)
+  
+  a. Primero debemos de preparar el acomodo de los datos por tipo de vehiculo y cantidad para que se acople al grafico que deseamos. Revisar funcion gather
+ https://www.rdocumentation.org/packages/tidyr/versions/0.8.3/topics/gather
+
+```{r}
+ruta27_tipo_veh_1 <- ruta27 %>% 
+                            gather("Tipo_Vehiculo", "Cantidad",-c(1,2))
+#ruta27_tipo_veh_1
+```
+Realizamos la suma  total por tipo de vehiculo 
+```{r}
+ruta27_tipo_veh <- ruta27_tipo_veh_1 %>%
+  group_by(Tipo_Vehiculo) %>%
+  summarize(Total= sum(Cantidad))
+#View(ruta27_tipo_veh)
+```
+Sin anotaciones
+```{r}
+ggplot(ruta27_tipo_veh, aes(x=Tipo_Vehiculo, y= Total)) + geom_bar(stat="identity", fill="#FF9999")+
+  labs(x="Tipo de Vehículo", y = "Total de Flujo de Tráfico")+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(),axis.line = element_line(colour = "black"))
+```
+
+
+Con anotaciones
+```{r}
+ggplot(ruta27_tipo_veh, aes(x=Tipo_Vehiculo, y= Total)) + geom_bar(stat="identity", fill="greenyellow")+
+  labs(x="Tipo de Vehículo", y = "Total del Flujo de Tráfico")+
+  annotate("text", x="Liviano", y = 600000000, label = "687 375 222",fontface="bold",size=4.5,color="grey21")+
+  annotate("text", x="C5E", y = 43000000, label = "17 066 552",color="grey21")+
+  annotate("text", x="C4E", y = 30000000, label = "7 456 996",color="grey21")+
+  annotate("text", x="C23E", y = 35500000, label = "12 124 442",color="grey21")+
+  annotate("text", x="Autobuses", y = 35000000, label = "11 061 878",color="grey21")+
+  
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(),axis.line = element_line(colour = "black"))+
+  ggtitle("Total del flujo de tráfico por tipo de vehículo")
+
+```
+  
+  b. Distribuciones
+  
+```{r}
+ ggplot(ruta27_tipo_veh_1, aes(x=Cantidad)) + 
+ geom_histogram(aes(y=..density..), colour="black", fill="white")+
+ geom_density(alpha=.2, fill="#FF6666") +
+  labs(title="Histograma de la cantidad de Vehículo por Tipo",x="Flujo de tráfico", y ="Densidad")+ 
+  facet_wrap( ~ Tipo_Vehiculo, ncol=1,scales="free_y") + #se ajusta libremente el eje y 
+  scale_x_continuous(limit = c(0,10000))+  #se puede adecuar el limite para mostrar la distribucion
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+  panel.background = element_blank())
+```
+  
+  c. Puntos de conteo, se selecciona el vehiculo liviano. 
+  
+```{r}
+CantLiv <- ruta27_tipo_veh_1 %>%
+  filter(Tipo_Vehiculo=="Liviano")
+
+CantLiv$PuntoConteo <-  as.factor(CantLiv$PuntoConteo) #convertimos al punto de conteo en factor,esto se realiza para posteriormente ordenarlos con la funcion fct_level
+View(CantLiv)
+```
+
+Se coloca este comando cuando en ocasiones el group_by no funciona 
+```{r}
+#detach(package:plyr)
+``` 
+
+```{r}
+pc <- CantLiv %>%
+  group_by(PuntoConteo) %>%
+  summarize(sumaVehiculos=sum(Cantidad))
+View(pc)
+```
+  
+
+Highlight
+```{r}
+x <- pc %>% mutate( ToHighlight = ifelse( PuntoConteo == "2900" | PuntoConteo == "10540" | PuntoConteo == "7100" , "yes", "no" ) )
+#View(x)
+```
+
+
+Ordenar factor de punto conteo
+```{r}
+order <- x %>%
+  mutate(PuntoConteo = fct_relevel(PuntoConteo, 
+            "500", "2900", "7100", 
+            "10540", "22450","30620")) 
+
+ ggplot (data=order ,aes(x=PuntoConteo, y=sumaVehiculos,fill=ToHighlight)) +
+    geom_bar( stat="identity")+
+  scale_fill_manual( values = c( "yes"="turquoise3" ,"no"="paleturquoise1"), guide = FALSE )+
+   ggtitle("Total de Vehículos por cada Punto de Conteo en Sentido Creciente") +
+  theme(plot.title = element_text(hjust = 0.5))+
+   labs(x="Punto de Conteo", y = "Total del Flujo de Vehículo Liviano")+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(),axis.line = element_line(colour = "black"))+
+  
+   
+   #lo siguiente se realiza de forma automatizada (escribir el numero y la posicion), esto se realiza ya que puede ser que los datos cambien, de lo contrario tendriamos que estar digitando el numero que corresponde. 
+  annotate("text", x="2900", y = (as.numeric(order[2,2])+10000000) , label = as.character(order[2,2]),fontface="bold",size=4,color="grey21")+
+  annotate("text", x="7100", y = (as.numeric(order[3,2])+10000000), label = as.character(order[3,2]),color="grey21",size=3)+
+  annotate("text", x="10540", y =(as.numeric(order[4,2])+10000000), label = as.character(order[4,2]),color="grey21",size=3)
+
+```
+son 172 152 452 
+  
+d. Para el punto de conteo 2900 
+
+```{r}
+ruta27_2900 <- ruta27 %>% 
+                      filter(PuntoConteo == "2900")
+#View(ruta27_2900)
+```
+
+Trabajando con fechas
+```{r}
+ruta27_2900 <- ruta27_2900 %>% 
+  mutate(Fecha = as.POSIXct(ruta27_2900$Dia, format= "%d/%m/%Y",origin= "01/01/2015"))
+```
+
+
+Análisis por Mes
+Crear columnas con número de mes y nombre de mes:
+con comando para que salga en español
+```{r}
+meses_2900 <- ruta27_2900%>%
+  mutate(Mes=month(Fecha,abbr = TRUE,label=TRUE,locale=Sys.setlocale(category = "LC_COLLATE", locale = "Spanish")),Ano=year(Fecha)) 
+#View(meses_2900)
+```
+
+Una vez que tenemos las columnas con MES entonces se crea el data frame acomodandoló mensualemente para que el análisis se haga correctamente. 
+```{r}
+#detach(package:plyr)
+```
+
+```{r}
+meses_2900 <- meses_2900 %>%
+  group_by(Ano,Mes) %>%
+  summarise (sumaLiviano =sum(Liviano))
+#meses_2900
+```
+
+```{r}
+meses_sumliv_2900<- meses_2900[,3]
+```
+
+Series de tiempo 
+```{r}
+meses.ts_2900 = ts(meses_sumliv_2900, start = c(2015,2), frequency = 12)
+```
+```{r}
+ggseasonplot(meses.ts_2900) + ylab("Flujo de Tráfico del Vehículo Liviano") + xlab("Mes")+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(),axis.line = element_line(colour = "black"))+
+  ggtitle ("Seasonal plot")
+```
+
+
+
+  
+
+
+
